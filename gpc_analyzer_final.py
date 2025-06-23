@@ -3,31 +3,19 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-import plotly.io as pio  # orca를 사용하기 위해 import
 from io import BytesIO
-
-# orca를 기본 이미지 엔진으로 설정 (배포 환경용)
-try:
-    pio.orca.config.executable = 'orca'
-    pio.orca.config.save()
-except Exception as e:
-    # 로컬 환경에서는 orca가 없을 수 있으므로 오류를 무시하고 넘어감
-    pass
 
 # --- 함수 정의 (변경 없음) ---
 def calculate_gpc_data(df, A, B, C, D, start_time, end_time, mode):
     if mode == "chromatogram":
-        df.columns = ['Retention Time', 'RI Signal']
-        df = df.apply(pd.to_numeric, errors='coerce').dropna()
+        df.columns = ['Retention Time', 'RI Signal']; df = df.apply(pd.to_numeric, errors='coerce').dropna()
         df_filtered = df[(df['Retention Time'] >= start_time) & (df['Retention Time'] <= end_time)].copy()
         if df_filtered.empty: return 0, 0, 0, 0, pd.DataFrame()
-        min_signal = df_filtered['RI Signal'].min()
-        df_filtered['RI Signal Corrected'] = df_filtered['RI Signal'] - min_signal
+        min_signal = df_filtered['RI Signal'].min(); df_filtered['RI Signal Corrected'] = df_filtered['RI Signal'] - min_signal
         t = df_filtered['Retention Time']; log_M = A * (t**3) + B * (t**2) + C * t + D
         df_filtered['Molecular Weight'] = 10**log_M; df_filtered['log(M)'] = log_M
     else: # mode == "differential"
-        df.columns = ['log(M)', 'RI Signal']
-        df = df.apply(pd.to_numeric, errors='coerce').dropna()
+        df.columns = ['log(M)', 'RI Signal']; df = df.apply(pd.to_numeric, errors='coerce').dropna()
         df_filtered = df[(df['log(M)'] >= start_time) & (df['log(M)'] <= end_time)].copy()
         if df_filtered.empty: return 0, 0, 0, 0, pd.DataFrame()
         df_filtered['RI Signal Corrected'] = df_filtered['RI Signal']
@@ -102,7 +90,6 @@ if uploaded_file:
     if results:
         st.header("📋 종합 분석 결과"); st.dataframe(pd.DataFrame(results).style.format({"Mn":"{:,.0f}","Mw":"{:,.0f}","Mz":"{:,.0f}","PDI":"{:.4f}"}), use_container_width=True)
         st.markdown("---")
-        
         st.header("📊 샘플별 정규화 분자량 분포 곡선 오버레이")
         selected_samples = st.multiselect("그래프에 표시할 샘플을 선택하세요.", options=xls.sheet_names, default=xls.sheet_names)
         
@@ -129,20 +116,13 @@ if uploaded_file:
                                   labels={'RI Signal Normalized': 'Normalized RI Signal'}, color_discrete_sequence=px.colors.qualitative.Plotly)
             fig_overlay.update_xaxes(autorange="reversed"); st.plotly_chart(fig_overlay, use_container_width=True)
             
-            # [최종 수정] orca를 사용하여 이미지 생성
+            # 원래의 kaleido 방식 사용
             try:
-                fig_for_download = go.Figure(fig_overlay)
-                fig_for_download.update_layout(template='plotly_white')
-                
-                # pio.to_image 사용
-                img_bytes = pio.to_image(fig_for_download, format="png", width=1000, height=600, scale=2)
-                
-                st.download_button(label="📈 현재 그래프 이미지 다운로드 (PNG)", data=img_bytes, file_name="gpc_overlay_graph.png", mime="image/png")
+                fig_for_download = go.Figure(fig_overlay); fig_for_download.update_layout(template='plotly_white')
+                buf = BytesIO(); fig_for_download.write_image(buf, format="png", width=1000, height=600, scale=2)
+                st.download_button(label="📈 현재 그래프 이미지 다운로드 (PNG)", data=buf.getvalue(), file_name="gpc_overlay_graph.png", mime="image/png")
             except Exception as e:
-                st.warning(f"이미지 다운로드 버튼 생성 실패: orca 엔진 관련 오류일 수 있습니다. (오류: {e})")
-        else:
-            st.warning("선택된 범위에 해당하는 데이터가 없습니다.")
-    elif uploaded_file:
-        st.warning("분석할 데이터가 없습니다. 파일 형식이나 분석 범위를 확인해주세요.")
-else:
-    st.info("👈 왼쪽 사이드바에서 분석 모드를 선택하고 파일을 업로드해주세요.")
+                st.warning(f"이미지 다운로드 버튼 생성 실패: {e}")
+        else: st.warning("선택된 범위에 해당하는 데이터가 없습니다.")
+    elif uploaded_file: st.warning("분석할 데이터가 없습니다. 파일 형식이나 분석 범위를 확인해주세요.")
+else: st.info("👈 왼쪽 사이드바에서 분석 모드를 선택하고 파일을 업로드해주세요.")

@@ -1,7 +1,7 @@
-libgconf-2-4
-libgtk2.0-0
-libxtst6
-libxss1
-libnss3
-libasound2
-xvfb 
+libgl1-mesa-glx
+libglib2.0-0
+libsm6
+libxext6
+libxrender-dev
+libx11-6
+ffmpeg
