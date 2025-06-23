@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
-from io import BytesIO
 
 # --- 함수 정의 (변경 없음) ---
 def calculate_gpc_data(df, A, B, C, D, start_time, end_time, mode):
@@ -114,15 +112,11 @@ if uploaded_file:
             combined_graph_df = pd.concat(graph_dfs, ignore_index=True)
             fig_overlay = px.line(combined_graph_df, x='log(M)', y='RI Signal Normalized', color='Sample', title="정규화 분자량 분포 곡선",
                                   labels={'RI Signal Normalized': 'Normalized RI Signal'}, color_discrete_sequence=px.colors.qualitative.Plotly)
-            fig_overlay.update_xaxes(autorange="reversed"); st.plotly_chart(fig_overlay, use_container_width=True)
-            
-            # 원래의 kaleido 방식 사용
-            try:
-                fig_for_download = go.Figure(fig_overlay); fig_for_download.update_layout(template='plotly_white')
-                buf = BytesIO(); fig_for_download.write_image(buf, format="png", width=1000, height=600, scale=2)
-                st.download_button(label="📈 현재 그래프 이미지 다운로드 (PNG)", data=buf.getvalue(), file_name="gpc_overlay_graph.png", mime="image/png")
-            except Exception as e:
-                st.warning(f"이미지 다운로드 버튼 생성 실패: {e}")
+            fig_overlay.update_xaxes(autorange="reversed")
+            # [핵심] 맞춤 다운로드 버튼을 제거하고 Plotly 기본 기능을 사용하도록 함
+            st.plotly_chart(fig_overlay, use_container_width=True, config={'toImageButtonOptions': {'format': 'png', 'filename': 'gpc_overlay_graph', 'scale': 2}})
+            st.info("💡 **이미지 다운로드 방법**: 그래프 오른쪽 상단에 마우스를 올리면 나타나는 **카메라 아이콘**을 클릭하세요.")
+
         else: st.warning("선택된 범위에 해당하는 데이터가 없습니다.")
     elif uploaded_file: st.warning("분석할 데이터가 없습니다. 파일 형식이나 분석 범위를 확인해주세요.")
 else: st.info("👈 왼쪽 사이드바에서 분석 모드를 선택하고 파일을 업로드해주세요.")
